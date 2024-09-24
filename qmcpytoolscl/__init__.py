@@ -28,11 +28,13 @@ def print_opencl_device_info():
             print("\t\tMax Work-group Dims:(", dim[0], " ".join(map(str, dim[1:])), ")")
         print()
 
-def get_qmcpytoolscl_program_from_context(context):
+def get_qmcpytoolscl_program_from_context(context,BS0,BS1,BS2):
     import pyopencl as cl
     FILEDIR = os.path.dirname(os.path.realpath(__file__))
     with open(FILEDIR+"/qmcpytoolscl.cl","r") as kernel_file:
         kernelsource = kernel_file.read()
+    kernelsource = kernelsource.replace("HERE1","%d"%int(BS0*BS2))
+    kernelsource = kernelsource.replace("HERE2","%d"%int(BS0*BS1*BS2))
     program = cl.Program(context,kernelsource).build()
     return program
 
@@ -92,29 +94,31 @@ def opencl_c_func(func):
         else: # kwargs["backend"]=="cl"
             import pyopencl as cl
             t0_perf = time.perf_counter()
-            if "program" not in kwargs:
-                kwargs["program"] =  get_qmcpytoolscl_program_from_context(kwargs["context"])
             assert "global_size" in kwargs 
             kwargs["global_size"] = [min(kwargs["global_size"][i],args[i]) for i in range(3)]
             batch_size = [np.uint64(np.ceil(args[i]/kwargs["global_size"][i])) for i in range(3)]
             kwargs["global_size"] = [np.uint64(np.ceil(args[i]/batch_size[i])) for i in range(3)]
             if "local_size" not in kwargs:
                 kwargs["local_size"] = None
+            if "program" not in kwargs:
+                kwargs["program"] =  get_qmcpytoolscl_program_from_context(kwargs["context"],*batch_size)
             cl_func = getattr(kwargs["program"],func_name)
             args_device = [cl.Buffer(kwargs["context"],cl.mem_flags.READ_WRITE|cl.mem_flags.COPY_HOST_PTR,hostbuf=arg) if isinstance(arg,np.ndarray) else arg for arg in args]
             args_device = args_device[:3]+batch_size+args_device[3:] # repeat the first 3 args to the batch sizes
             try:
                 eval('_preprocess_%s(*args_device,kwargs=kwargs)'%func_name)
             except NameError: pass
+            t0_process = time.perf_counter()
             event = cl_func(kwargs["queue"],kwargs["global_size"],kwargs["local_size"],*args_device)
             if "wait" not in kwargs or kwargs["wait"]:
                 event.wait()
-                try:
-                    tdelta_process = (event.profile.end - event.profile.start)*1e-9
-                except cl._cl.RuntimeError:
-                    tdelta_process = -1
-            else:
-                tdelta_process = -1
+                #try:
+                #tdelta_process = (event.profile.end - event.profile.start)*1e-9
+                # except cl._cl.RuntimeError:
+                #     tdelta_process = -1
+            # else:
+            #     tdelta_process = -1
+            tdelta_process = time.perf_counter()-t0_process
             if isinstance(args[-1],np.ndarray):
                 num_overwrite_args = overwrite_args[func_name] if func_name in overwrite_args else 1
                 for i in range(-1,-1-num_overwrite_args,-1):
@@ -149,15 +153,16 @@ for block in blocks:
     args = []
     doc_args = []
     for i in range(si,len(lines)):
+        if "//" not in lines[i]: continue
         var_input,var_desc = lines[i].split(" // ")
         var_type,var = var_input.replace(",","").split(" ")[-2:]
-        if var_type not in c_to_ctypes_map:
-                raise Exception("var_type %s not found in map"%var_type)
-        c_var_type = c_to_ctypes_map[var_type]
-        if var[0]!="*":
+        var_type,var = var_type.strip(),var.strip()
+        if var_type[-1]!="*":
+            c_var_type = c_to_ctypes_map[var_type]
             doc_args += ["%s (np.%s): %s"%(var,c_var_type,var_desc)]
             args += ["ctypes.c_%s"%c_var_type]
         else:
+            c_var_type = c_to_ctypes_map[var_type[:-1]]
             doc_args += ["%s (np.ndarray of np.%s): %s"%(var[1:],c_var_type,var_desc)]
             args += ["np.ctypeslib.ndpointer(ctypes.c_%s,flags='C_CONTIGUOUS')"%c_var_type]
     doc_args = doc_args[:3]+doc_args[6:] # skip batch size args

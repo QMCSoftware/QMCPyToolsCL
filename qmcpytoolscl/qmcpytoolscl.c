@@ -1,35 +1,22 @@
-__kernel void lat_gen_linear(
+#include "qmcpytoolscl.h"
+
+EXPORT void lat_gen_linear(
     // Lattice points in linear order
-    const ulong r, // replications
-    const ulong n, // points
-    const ulong d, // dimension
-    const ulong batch_size_r, // batch size for replications
-    const ulong batch_size_n, // batch size for points
-    const ulong batch_size_d, // batch size for dimension
-    __global const ulong* g, // pointer to generating vector of size r*d
-    __global double* x // pointer to point storage of size r*n*d
+    const unsigned long long r, // replications
+    const unsigned long long n, // points
+    const unsigned long long d, // dimension
+    const unsigned long long batch_size_r, // batch size for replications
+    const unsigned long long batch_size_n, // batch size for points
+    const unsigned long long batch_size_d, // batch size for dimension
+    const unsigned long long *g, // pointer to generating vector of size r*d
+    double *x // pointer to point storage of size r*n*d
 ){
-    ulong g_priv[HERE1];
-    double x_priv[HERE2];
-    ulong l0 = get_global_id(0)*batch_size_r;
-    ulong i0 = get_global_id(1)*batch_size_n;
-    ulong j0 = get_global_id(2)*batch_size_d;
+    unsigned long long l0 = 0*batch_size_r;
+    unsigned long long i0 = 0*batch_size_n;
+    unsigned long long j0 = 0*batch_size_d;
     double n_double = n;
     double ifrac;
-    ulong ll,l,ii,i,jj,j;
-    for(ll=0; ll<batch_size_r; ll++){
-        l = l0+ll;
-        for(jj=0; jj<batch_size_d; jj++){
-            j = j0+jj;
-            g_priv[ll*batch_size_d+jj] = g[l*d+j];
-            if(j==(d-1)){
-                break;
-            }
-        }
-        if(l==(r-1)){
-            break;
-        }
-    }
+    unsigned long long ll,l,ii,i,jj,j;
     for(ii=0; ii<batch_size_n; ii++){
         i = i0+ii;
         ifrac = i/n_double;
@@ -37,8 +24,7 @@ __kernel void lat_gen_linear(
             j = j0+jj;
             for(ll=0; ll<batch_size_r; ll++){
                 l = l0+ll;
-                //x[l*n*d+i*d+j] = (double)(fmod((double)(g[l*d+j]*ifrac),(double)(1.)));
-                x_priv[ll*batch_size_n*batch_size_d+ii*batch_size_d+jj] = (double)(fmod((double)(g_priv[ll*batch_size_d+jj]*ifrac),(double)(1.)));
+                x[l*n*d+i*d+j] = (double)(fmod((double)(g[l*d+j]*ifrac),(double)(1.)));
                 if(l==(r-1)){
                     break;
                 }
@@ -51,46 +37,27 @@ __kernel void lat_gen_linear(
             break;
         }
     }
-    for(ll=0; ll<batch_size_r; ll++){
-        l = l0+ll;
-        for(ii=0; ii<batch_size_n; ii++){
-            i = i0+ii;
-            for(jj=0; jj<batch_size_d; jj++){
-                j = j0+jj;
-                x[l*n*d+i*d+j] = x_priv[ll*batch_size_n*batch_size_d+ii*batch_size_d+jj];
-                if(j==(d-1)){
-                    break;
-                }
-            }
-            if(i==(n-1)){
-                break;
-            }
-        }
-        if(l==(r-1)){
-            break;
-        }
-    }
 }
 
-__kernel void lat_gen_natural_gray(
+EXPORT void lat_gen_natural_gray(
     // Lattice points in Gray code or natural order
-    const ulong r, // replications
-    const ulong n, // points
-    const ulong d, // dimension
-    const ulong batch_size_r, // batch size for replications
-    const ulong batch_size_n, // batch size for points
-    const ulong batch_size_d, // batch size for dimension
-    const ulong n_start, // starting index in sequence
+    const unsigned long long r, // replications
+    const unsigned long long n, // points
+    const unsigned long long d, // dimension
+    const unsigned long long batch_size_r, // batch size for replications
+    const unsigned long long batch_size_n, // batch size for points
+    const unsigned long long batch_size_d, // batch size for dimension
+    const unsigned long long n_start, // starting index in sequence
     const char gc, // flag to use Gray code or natural order
-    __global const ulong *g, // pointer to generating vector of size r*d 
-    __global double *x // pointer to point storage of size r*n*d
+    const unsigned long long *g, // pointer to generating vector of size r*d 
+    double *x // pointer to point storage of size r*n*d
 ){   
-    ulong l0 = get_global_id(0)*batch_size_r;
-    ulong i0 = get_global_id(1)*batch_size_n;
-    ulong j0 = get_global_id(2)*batch_size_d;
+    unsigned long long l0 = 0*batch_size_r;
+    unsigned long long i0 = 0*batch_size_n;
+    unsigned long long j0 = 0*batch_size_d;
     double ifrac;
-    ulong p,v,itrue,igc,b,ll,l,ii,i,jj,j,idx;
-    ulong n0 = n_start+i0;
+    unsigned long long p,v,itrue,igc,b,ll,l,ii,i,jj,j,idx;
+    unsigned long long n0 = n_start+i0;
     if(n0==0){
         p = 0;
         v = 0;
@@ -99,7 +66,7 @@ __kernel void lat_gen_natural_gray(
         p = ceil(log2((double)n0+1));
         v = 0; 
         b = 0;
-        ulong t = n0^(n0>>1);
+        unsigned long long t = n0^(n0>>1);
         while(t>0){
             if(t&1){
                 v+= 1<<(p-b-1);
@@ -148,24 +115,24 @@ __kernel void lat_gen_natural_gray(
     }
 }
 
-__kernel void lat_shift_mod_1(
+EXPORT void lat_shift_mod_1(
     // Shift mod 1 for lattice points
-    const ulong r, // replications
-    const ulong n, // points
-    const ulong d, // dimension
-    const ulong batch_size_r, // batch size for replications
-    const ulong batch_size_n, // batch size for points
-    const ulong batch_size_d, // batch size for dimension
-    const ulong r_x, // replications in x
-    __global const double *x, // lattice points of size r_x*n*d
-    __global const double *shifts, // shifts of size r*d
-    __global double *xr // pointer to point storage of size r*n*d
+    const unsigned long long r, // replications
+    const unsigned long long n, // points
+    const unsigned long long d, // dimension
+    const unsigned long long batch_size_r, // batch size for replications
+    const unsigned long long batch_size_n, // batch size for points
+    const unsigned long long batch_size_d, // batch size for dimension
+    const unsigned long long r_x, // replications in x
+    const double *x, // lattice points of size r_x*n*d
+    const double *shifts, // shifts of size r*d
+    double *xr // pointer to point storage of size r*n*d
 ){
-    ulong l0 = get_global_id(0)*batch_size_r;
-    ulong i0 = get_global_id(1)*batch_size_n;
-    ulong j0 = get_global_id(2)*batch_size_d;
-    ulong ll,l,ii,i,jj,j,idx;
-    ulong nelem_x = r_x*n*d;
+    unsigned long long l0 = 0*batch_size_r;
+    unsigned long long i0 = 0*batch_size_n;
+    unsigned long long j0 = 0*batch_size_d;
+    unsigned long long ll,l,ii,i,jj,j,idx;
+    unsigned long long nelem_x = r_x*n*d;
     for(ll=0; ll<batch_size_r; ll++){
         l = l0+ll;
         for(ii=0; ii<batch_size_n; ii++){
@@ -188,23 +155,23 @@ __kernel void lat_shift_mod_1(
     }
 }
 
-__kernel void dnb2_gmat_lsb_to_msb(
+EXPORT void dnb2_gmat_lsb_to_msb(
     // Convert base 2 generating matrices with integers stored in Least Significant Bit order to Most Significant Bit order
-    const ulong r, // replications
-    const ulong d, // dimension
-    const ulong mmax, // columns in each generating matrix 
-    const ulong batch_size_r, // batch size for replications
-    const ulong batch_size_d, // batch size for dimensions
-    const ulong batch_size_mmax, // batch size for columns
-    __global const ulong *tmaxes, // length r vector of bits in each integer of the resulting MSB generating matrices
-    __global const ulong *C_lsb, // original generating matrices of size r*d*mmax
-    __global ulong *C_msb // new generating matrices of size r*d*mmax
+    const unsigned long long r, // replications
+    const unsigned long long d, // dimension
+    const unsigned long long mmax, // columns in each generating matrix 
+    const unsigned long long batch_size_r, // batch size for replications
+    const unsigned long long batch_size_d, // batch size for dimensions
+    const unsigned long long batch_size_mmax, // batch size for columns
+    const unsigned long long *tmaxes, // length r vector of bits in each integer of the resulting MSB generating matrices
+    const unsigned long long *C_lsb, // original generating matrices of size r*d*mmax
+    unsigned long long *C_msb // new generating matrices of size r*d*mmax
 ){
-    ulong l0 = get_global_id(0)*batch_size_r;
-    ulong j0 = get_global_id(1)*batch_size_d;
-    ulong k0 = get_global_id(2)*batch_size_mmax;
-    ulong tmax,t,ll,l,jj,j,kk,k,v,vnew,idx;
-    ulong bigone = 1;
+    unsigned long long l0 = 0*batch_size_r;
+    unsigned long long j0 = 0*batch_size_d;
+    unsigned long long k0 = 0*batch_size_mmax;
+    unsigned long long tmax,t,ll,l,jj,j,kk,k,v,vnew,idx;
+    unsigned long long bigone = 1;
     for(ll=0; ll<batch_size_r; ll++){
         l = l0+ll;
         tmax = tmaxes[l];
@@ -238,26 +205,26 @@ __kernel void dnb2_gmat_lsb_to_msb(
     }
 }
 
-__kernel void dnb2_linear_matrix_scramble(
+EXPORT void dnb2_linear_matrix_scramble(
     // Linear matrix scrambling for base 2 generating matrices
-    const ulong r, // replications
-    const ulong d, // dimension
-    const ulong mmax, // columns in each generating matrix 
-    const ulong batch_size_r, // batch size for replications
-    const ulong batch_size_d, // batch size for dimensions
-    const ulong batch_size_mmax, // batch size for columns
-    const ulong r_C, // original generating matrices
-    const ulong tmax_new, // bits in the integers of the resulting generating matrices
-    __global const ulong *S, // scrambling matrices of size r*d*tmax_new
-    __global const ulong *C, // original generating matrices of size r_C*d*mmax
-    __global ulong *C_lms // resulting generating matrices of size r*d*mmax
+    const unsigned long long r, // replications
+    const unsigned long long d, // dimension
+    const unsigned long long mmax, // columns in each generating matrix 
+    const unsigned long long batch_size_r, // batch size for replications
+    const unsigned long long batch_size_d, // batch size for dimensions
+    const unsigned long long batch_size_mmax, // batch size for columns
+    const unsigned long long r_C, // original generating matrices
+    const unsigned long long tmax_new, // bits in the integers of the resulting generating matrices
+    const unsigned long long *S, // scrambling matrices of size r*d*tmax_new
+    const unsigned long long *C, // original generating matrices of size r_C*d*mmax
+    unsigned long long *C_lms // resulting generating matrices of size r*d*mmax
 ){
-    ulong l0 = get_global_id(0)*batch_size_r;
-    ulong j0 = get_global_id(1)*batch_size_d;
-    ulong k0 = get_global_id(2)*batch_size_mmax;
-    ulong b,t,ll,l,jj,j,kk,k,u,v,udotv,vnew,idx;
-    ulong bigone = 1;
-    ulong nelemC = r_C*d*mmax;
+    unsigned long long l0 = 0*batch_size_r;
+    unsigned long long j0 = 0*batch_size_d;
+    unsigned long long k0 = 0*batch_size_mmax;
+    unsigned long long b,t,ll,l,jj,j,kk,k,u,v,udotv,vnew,idx;
+    unsigned long long bigone = 1;
+    unsigned long long nelemC = r_C*d*mmax;
     for(ll=0; ll<batch_size_r; ll++){
         l = l0+ll;
         for(jj=0; jj<batch_size_d; jj++){
@@ -295,25 +262,25 @@ __kernel void dnb2_linear_matrix_scramble(
     }
 }
 
-__kernel void dnb2_gen_natural_gray(
+EXPORT void dnb2_gen_natural_gray(
     // Binary representation of digital net in base 2 in either Gray code or natural order
-    const ulong r, // replications
-    const ulong n, // points
-    const ulong d, // dimension
-    const ulong batch_size_r, // batch size for replications
-    const ulong batch_size_n, // batch size for points
-    const ulong batch_size_d, // batch size for dimension
-    const ulong n_start, // starting index in sequence
+    const unsigned long long r, // replications
+    const unsigned long long n, // points
+    const unsigned long long d, // dimension
+    const unsigned long long batch_size_r, // batch size for replications
+    const unsigned long long batch_size_n, // batch size for points
+    const unsigned long long batch_size_d, // batch size for dimension
+    const unsigned long long n_start, // starting index in sequence
     const char gc, // flag to use Gray code or natural order
-    const ulong mmax, // columns in each generating matrix
-    __global const ulong *C, // generating matrices of size r*d*mmax
-    __global ulong *xb // binary digital net points of size r*n*d
+    const unsigned long long mmax, // columns in each generating matrix
+    const unsigned long long *C, // generating matrices of size r*d*mmax
+    unsigned long long *xb // binary digital net points of size r*n*d
 ){   
-    ulong l0 = get_global_id(0)*batch_size_r;
-    ulong i0 = get_global_id(1)*batch_size_n;
-    ulong j0 = get_global_id(2)*batch_size_d;
-    ulong b,t,ll,l,ii,i,jj,j,prev_i,new_i;
-    ulong itrue = n_start+i0;
+    unsigned long long l0 = 0*batch_size_r;
+    unsigned long long i0 = 0*batch_size_n;
+    unsigned long long j0 = 0*batch_size_d;
+    unsigned long long b,t,ll,l,ii,i,jj,j,prev_i,new_i;
+    unsigned long long itrue = n_start+i0;
     // initial index 
     t = itrue^(itrue>>1);
     prev_i = gc ? i0*d : (t-n_start)*d;
@@ -381,25 +348,25 @@ __kernel void dnb2_gen_natural_gray(
     }
 }
 
-__kernel void dnb2_digital_shift(
+EXPORT void dnb2_digital_shift(
     // Digital shift base 2 digital net 
-    const ulong r, // replications
-    const ulong n, // points
-    const ulong d, // dimension
-    const ulong batch_size_r, // batch size for replications
-    const ulong batch_size_n, // batch size for points
-    const ulong batch_size_d, // batch size for dimension
-    const ulong r_x, // replications of xb
-    __global const ulong *lshifts, // left shift applied to each element of xb
-    __global const ulong *xb, // binary base 2 digital net points of size r_x*n*d
-    __global const ulong *shiftsb, // digital shifts of size r*d
-    __global ulong *xrb // digital shifted digital net points of size r*n*d
+    const unsigned long long r, // replications
+    const unsigned long long n, // points
+    const unsigned long long d, // dimension
+    const unsigned long long batch_size_r, // batch size for replications
+    const unsigned long long batch_size_n, // batch size for points
+    const unsigned long long batch_size_d, // batch size for dimension
+    const unsigned long long r_x, // replications of xb
+    const unsigned long long *lshifts, // left shift applied to each element of xb
+    const unsigned long long *xb, // binary base 2 digital net points of size r_x*n*d
+    const unsigned long long *shiftsb, // digital shifts of size r*d
+    unsigned long long *xrb // digital shifted digital net points of size r*n*d
 ){
-    ulong l0 = get_global_id(0)*batch_size_r;
-    ulong i0 = get_global_id(1)*batch_size_n;
-    ulong j0 = get_global_id(2)*batch_size_d;
-    ulong ll,l,ii,i,jj,j,idx;
-    ulong nelem_x = r_x*n*d;
+    unsigned long long l0 = 0*batch_size_r;
+    unsigned long long i0 = 0*batch_size_n;
+    unsigned long long j0 = 0*batch_size_d;
+    unsigned long long ll,l,ii,i,jj,j,idx;
+    unsigned long long nelem_x = r_x*n*d;
     for(ll=0; ll<batch_size_r; ll++){
         l = l0+ll;
         for(ii=0; ii<batch_size_n; ii++){
@@ -422,22 +389,22 @@ __kernel void dnb2_digital_shift(
     }
 }
 
-__kernel void dnb2_integer_to_float(
+EXPORT void dnb2_integer_to_float(
     // Convert base 2 binary digital net points to floats
-    const ulong r, // replications
-    const ulong n, // points
-    const ulong d, // dimension
-    const ulong batch_size_r, // batch size for replications
-    const ulong batch_size_n, // batch size for points
-    const ulong batch_size_d, // batch size for dimension
-    __global const ulong *tmaxes, // bits in integers of each generating matrix of size r
-    __global const ulong *xb, // binary digital net points of size r*n*d
-    __global double *x // float digital net points of size r*n*d
+    const unsigned long long r, // replications
+    const unsigned long long n, // points
+    const unsigned long long d, // dimension
+    const unsigned long long batch_size_r, // batch size for replications
+    const unsigned long long batch_size_n, // batch size for points
+    const unsigned long long batch_size_d, // batch size for dimension
+    const unsigned long long *tmaxes, // bits in integers of each generating matrix of size r
+    const unsigned long long *xb, // binary digital net points of size r*n*d
+    double *x // float digital net points of size r*n*d
 ){
-    ulong l0 = get_global_id(0)*batch_size_r;
-    ulong i0 = get_global_id(1)*batch_size_n;
-    ulong j0 = get_global_id(2)*batch_size_d;
-    ulong ll,l,ii,i,jj,j,idx;
+    unsigned long long l0 = 0*batch_size_r;
+    unsigned long long i0 = 0*batch_size_n;
+    unsigned long long j0 = 0*batch_size_d;
+    unsigned long long ll,l,ii,i,jj,j,idx;
     for(ll=0; ll<batch_size_r; ll++){
         l = l0+ll;
         for(ii=0; ii<batch_size_n; ii++){
@@ -460,26 +427,26 @@ __kernel void dnb2_integer_to_float(
     }
 }
 
-__kernel void dnb2_interlace(
+EXPORT void dnb2_interlace(
     // Interlace generating matrices or transpose of point sets to attain higher order digital nets in base 2
-    const ulong r, // replications
-    const ulong d_alpha, // dimension of resulting generating matrices 
-    const ulong mmax, // columns of generating matrices
-    const ulong batch_size_r, // batch size for replications
-    const ulong batch_size_d_alpha, // batch size for dimension of resulting generating matrices
-    const ulong batch_size_mmax, // batch size for replications
-    const ulong d, // dimension of original generating matrices
-    const ulong tmax, // bits in integers of original generating matrices
-    const ulong tmax_alpha, // bits in integers of resulting generating matrices
-    const ulong alpha, // interlacing factor
-    __global const ulong *C, // original generating matrices of size r*d*mmax
-    __global ulong *C_alpha // resulting interlaced generating matrices of size r*d_alpha*mmax
+    const unsigned long long r, // replications
+    const unsigned long long d_alpha, // dimension of resulting generating matrices 
+    const unsigned long long mmax, // columns of generating matrices
+    const unsigned long long batch_size_r, // batch size for replications
+    const unsigned long long batch_size_d_alpha, // batch size for dimension of resulting generating matrices
+    const unsigned long long batch_size_mmax, // batch size for replications
+    const unsigned long long d, // dimension of original generating matrices
+    const unsigned long long tmax, // bits in integers of original generating matrices
+    const unsigned long long tmax_alpha, // bits in integers of resulting generating matrices
+    const unsigned long long alpha, // interlacing factor
+    const unsigned long long *C, // original generating matrices of size r*d*mmax
+    unsigned long long *C_alpha // resulting interlaced generating matrices of size r*d_alpha*mmax
 ){
-    ulong l0 = get_global_id(0)*batch_size_r;
-    ulong j0_alpha = get_global_id(1)*batch_size_d_alpha;
-    ulong k0 = get_global_id(2)*batch_size_mmax;
-    ulong ll,l,jj_alpha,j_alpha,kk,k,t_alpha,t,jj,j,v,b;
-    ulong bigone = 1;
+    unsigned long long l0 = 0*batch_size_r;
+    unsigned long long j0_alpha = 0*batch_size_d_alpha;
+    unsigned long long k0 = 0*batch_size_mmax;
+    unsigned long long ll,l,jj_alpha,j_alpha,kk,k,t_alpha,t,jj,j,v,b;
+    unsigned long long bigone = 1;
     for(ll=0; ll<batch_size_r; ll++){
         l = l0+ll;
         for(jj_alpha=0; jj_alpha<batch_size_d_alpha; jj_alpha++){
@@ -511,26 +478,26 @@ __kernel void dnb2_interlace(
     }
 }
 
-__kernel void dnb2_undo_interlace(
+EXPORT void dnb2_undo_interlace(
     // Undo interlacing of generating matrices in base 2
-    const ulong r, // replications
-    const ulong d, // dimension of resulting generating matrices 
-    const ulong mmax, // columns in generating matrices
-    const ulong batch_size_r, // batch size of replications
-    const ulong batch_size_d, // batch size of dimension of resulting generating matrices
-    const ulong batch_size_mmax, // batch size of columns in generating matrices
-    const ulong d_alpha, // dimension of interlaced generating matrices
-    const ulong tmax, // bits in integers of original generating matrices 
-    const ulong tmax_alpha, // bits in integers of interlaced generating matrices
-    const ulong alpha, // interlacing factor
-    __global const ulong *C_alpha, // interlaced generating matrices of size r*d_alpha*mmax
-    __global ulong *C // original generating matrices of size r*d*mmax
+    const unsigned long long r, // replications
+    const unsigned long long d, // dimension of resulting generating matrices 
+    const unsigned long long mmax, // columns in generating matrices
+    const unsigned long long batch_size_r, // batch size of replications
+    const unsigned long long batch_size_d, // batch size of dimension of resulting generating matrices
+    const unsigned long long batch_size_mmax, // batch size of columns in generating matrices
+    const unsigned long long d_alpha, // dimension of interlaced generating matrices
+    const unsigned long long tmax, // bits in integers of original generating matrices 
+    const unsigned long long tmax_alpha, // bits in integers of interlaced generating matrices
+    const unsigned long long alpha, // interlacing factor
+    const unsigned long long *C_alpha, // interlaced generating matrices of size r*d_alpha*mmax
+    unsigned long long *C // original generating matrices of size r*d*mmax
 ){
-    ulong l0 = get_global_id(0)*batch_size_r;
-    ulong j0 = get_global_id(1)*batch_size_d;
-    ulong k0 = get_global_id(2)*batch_size_mmax;
-    ulong ll,l,j_alpha,kk,k,t_alpha,tt_alpha,t,jj,j,v,b;
-    ulong bigone = 1;
+    unsigned long long l0 = 0*batch_size_r;
+    unsigned long long j0 = 0*batch_size_d;
+    unsigned long long k0 = 0*batch_size_mmax;
+    unsigned long long ll,l,j_alpha,kk,k,t_alpha,tt_alpha,t,jj,j,v,b;
+    unsigned long long bigone = 1;
     for(ll=0; ll<batch_size_r; ll++){
         l = l0+ll;
         for(jj=0; jj<batch_size_d; jj++){
@@ -562,27 +529,27 @@ __kernel void dnb2_undo_interlace(
     }
 }
 
-__kernel void gdn_linear_matrix_scramble(
+EXPORT void gdn_linear_matrix_scramble(
     // Linear matrix scramble for generalized digital net 
-    const ulong r, // replications 
-    const ulong d, // dimension 
-    const ulong mmax, // columns in each generating matrix
-    const ulong batch_size_r, // batch size for replications
-    const ulong batch_size_d, // batch size for dimension
-    const ulong batch_size_mmax, // batch size columns
-    const ulong r_C, // number of replications of C 
-    const ulong r_b, // number of replications of bases
-    const ulong tmax, // number of rows in each generating matrix 
-    const ulong tmax_new, // new number of rows in each generating matrix 
-    __global const ulong *bases, // bases for each dimension of size r*d 
-    __global const ulong *S, // scramble matrices of size r*d*tmax_new*tmax
-    __global const ulong *C, // generating matrices of size r_C*d*mmax*tmax 
-    __global ulong *C_lms // new generating matrices of size r*d*mmax*tmax_new
+    const unsigned long long r, // replications 
+    const unsigned long long d, // dimension 
+    const unsigned long long mmax, // columns in each generating matrix
+    const unsigned long long batch_size_r, // batch size for replications
+    const unsigned long long batch_size_d, // batch size for dimension
+    const unsigned long long batch_size_mmax, // batch size columns
+    const unsigned long long r_C, // number of replications of C 
+    const unsigned long long r_b, // number of replications of bases
+    const unsigned long long tmax, // number of rows in each generating matrix 
+    const unsigned long long tmax_new, // new number of rows in each generating matrix 
+    const unsigned long long *bases, // bases for each dimension of size r*d 
+    const unsigned long long *S, // scramble matrices of size r*d*tmax_new*tmax
+    const unsigned long long *C, // generating matrices of size r_C*d*mmax*tmax 
+    unsigned long long *C_lms // new generating matrices of size r*d*mmax*tmax_new
 ){
-    ulong l0 = get_global_id(0)*batch_size_r;
-    ulong j0 = get_global_id(1)*batch_size_d;
-    ulong k0 = get_global_id(2)*batch_size_mmax;
-    ulong ll,l,jj,j,kk,k,t,c,b,v,idx_C,idx_C_lms,idx_S; 
+    unsigned long long l0 = 0*batch_size_r;
+    unsigned long long j0 = 0*batch_size_d;
+    unsigned long long k0 = 0*batch_size_mmax;
+    unsigned long long ll,l,jj,j,kk,k,t,c,b,v,idx_C,idx_C_lms,idx_S; 
     for(ll=0; ll<batch_size_r; ll++){
         l = l0+ll;
         for(jj=0; jj<batch_size_d; jj++){
@@ -614,26 +581,26 @@ __kernel void gdn_linear_matrix_scramble(
     }
 }
 
-__kernel void gdn_gen_natural(
+EXPORT void gdn_gen_natural(
     // Generalized digital net where the base can be different for each dimension e.g. for the Halton sequence
-    const ulong r, // replications
-    const ulong n, // points
-    const ulong d, // dimension
-    const ulong batch_size_r, // batch size for replications
-    const ulong batch_size_n, // batch size for points
-    const ulong batch_size_d, // batch size for dimension
-    const ulong r_b, // number of replications of bases
-    const ulong mmax, // columns in each generating matrix
-    const ulong tmax, // rows of each generating matrix
-    const ulong n_start, // starting index in sequence
-    __global const ulong *bases, // bases for each dimension of size r_b*d
-    __global const ulong *C, // generating matrices of size r*d*mmax*tmax
-    __global ulong *xdig // generalized digital net sequence of digits of size r*n*d*tmax
+    const unsigned long long r, // replications
+    const unsigned long long n, // points
+    const unsigned long long d, // dimension
+    const unsigned long long batch_size_r, // batch size for replications
+    const unsigned long long batch_size_n, // batch size for points
+    const unsigned long long batch_size_d, // batch size for dimension
+    const unsigned long long r_b, // number of replications of bases
+    const unsigned long long mmax, // columns in each generating matrix
+    const unsigned long long tmax, // rows of each generating matrix
+    const unsigned long long n_start, // starting index in sequence
+    const unsigned long long *bases, // bases for each dimension of size r_b*d
+    const unsigned long long *C, // generating matrices of size r*d*mmax*tmax
+    unsigned long long *xdig // generalized digital net sequence of digits of size r*n*d*tmax
 ){   
-    ulong l0 = get_global_id(0)*batch_size_r;
-    ulong i0 = get_global_id(1)*batch_size_n;
-    ulong j0 = get_global_id(2)*batch_size_d;
-    ulong idx_xdig,idx_C,b,dig,itrue,icp,ii,i,jj,j,ll,l,t,k;
+    unsigned long long l0 = 0*batch_size_r;
+    unsigned long long i0 = 0*batch_size_n;
+    unsigned long long j0 = 0*batch_size_d;
+    unsigned long long idx_xdig,idx_C,b,dig,itrue,icp,ii,i,jj,j,ll,l,t,k;
     for(ll=0; ll<batch_size_r; ll++){
         l = l0+ll;
         for(ii=0; ii<batch_size_n; ii++){
@@ -673,25 +640,25 @@ __kernel void gdn_gen_natural(
     }
 }
 
-__kernel void gdn_gen_natural_same_base(
+EXPORT void gdn_gen_natural_same_base(
     // Generalized digital net with the same base for each dimension e.g. a digital net in base greater than 2
-    const ulong r, // replications
-    const ulong n, // points
-    const ulong d, // dimension
-    const ulong batch_size_r, // batch size for replications
-    const ulong batch_size_n, // batch size for points
-    const ulong batch_size_d, // batch size for dimension
-    const ulong mmax, // columns in each generating matrix
-    const ulong tmax, // rows of each generating matrix
-    const ulong n_start, // starting index in sequence
-    const ulong b, // common base
-    __global const ulong *C, // generating matrices of size r*d*mmax*tmax
-    __global ulong *xdig // generalized digital net sequence of digits of size r*n*d*tmax
+    const unsigned long long r, // replications
+    const unsigned long long n, // points
+    const unsigned long long d, // dimension
+    const unsigned long long batch_size_r, // batch size for replications
+    const unsigned long long batch_size_n, // batch size for points
+    const unsigned long long batch_size_d, // batch size for dimension
+    const unsigned long long mmax, // columns in each generating matrix
+    const unsigned long long tmax, // rows of each generating matrix
+    const unsigned long long n_start, // starting index in sequence
+    const unsigned long long b, // common base
+    const unsigned long long *C, // generating matrices of size r*d*mmax*tmax
+    unsigned long long *xdig // generalized digital net sequence of digits of size r*n*d*tmax
 ){   
-    ulong l0 = get_global_id(0)*batch_size_r;
-    ulong i0 = get_global_id(1)*batch_size_n;
-    ulong j0 = get_global_id(2)*batch_size_d;
-    ulong idx_xdig,idx_C,dig,itrue,icp,ii,i,jj,j,ll,l,t,k;
+    unsigned long long l0 = 0*batch_size_r;
+    unsigned long long i0 = 0*batch_size_n;
+    unsigned long long j0 = 0*batch_size_d;
+    unsigned long long idx_xdig,idx_C,dig,itrue,icp,ii,i,jj,j,ll,l,t,k;
     // initialize xdig everything to 0
     for(ll=0; ll<batch_size_r; ll++){
         l = l0+ll;
@@ -751,27 +718,27 @@ __kernel void gdn_gen_natural_same_base(
     }
 }
                 
-__kernel void gdn_digital_shift(
+EXPORT void gdn_digital_shift(
     // Digital shift a generalized digital net
-    const ulong r, // replications
-    const ulong n, // points
-    const ulong d, // dimension
-    const ulong batch_size_r, // batch size for replications
-    const ulong batch_size_n, // batch size for points
-    const ulong batch_size_d, // batch size for dimension
-    const ulong r_x, // replications of xdig
-    const ulong r_b, // replications of bases
-    const ulong tmax, // rows of each generating matrix
-    const ulong tmax_new, // rows of each new generating matrix
-    __global const ulong *bases, // bases for each dimension of size r_b*d
-    __global const ulong *shifts, // digital shifts of size r*d*tmax_new
-    __global const ulong *xdig, // binary digital net points of size r_x*n*d*tmax
-    __global ulong *xdig_new // float digital net points of size r*n*d*tmax_new
+    const unsigned long long r, // replications
+    const unsigned long long n, // points
+    const unsigned long long d, // dimension
+    const unsigned long long batch_size_r, // batch size for replications
+    const unsigned long long batch_size_n, // batch size for points
+    const unsigned long long batch_size_d, // batch size for dimension
+    const unsigned long long r_x, // replications of xdig
+    const unsigned long long r_b, // replications of bases
+    const unsigned long long tmax, // rows of each generating matrix
+    const unsigned long long tmax_new, // rows of each new generating matrix
+    const unsigned long long *bases, // bases for each dimension of size r_b*d
+    const unsigned long long *shifts, // digital shifts of size r*d*tmax_new
+    const unsigned long long *xdig, // binary digital net points of size r_x*n*d*tmax
+    unsigned long long *xdig_new // float digital net points of size r*n*d*tmax_new
 ){
-    ulong l0 = get_global_id(0)*batch_size_r;
-    ulong i0 = get_global_id(1)*batch_size_n;
-    ulong j0 = get_global_id(2)*batch_size_d;
-    ulong b,ll,l,ii,i,jj,j,t,idx_xdig,idx_xdig_new,idx_shift;
+    unsigned long long l0 = 0*batch_size_r;
+    unsigned long long i0 = 0*batch_size_n;
+    unsigned long long j0 = 0*batch_size_d;
+    unsigned long long b,ll,l,ii,i,jj,j,t,idx_xdig,idx_xdig_new,idx_shift;
     for(ll=0; ll<batch_size_r; ll++){
         l = l0+ll;
         for(ii=0; ii<batch_size_n; ii++){
@@ -802,27 +769,27 @@ __kernel void gdn_digital_shift(
     }
 }
 
-__kernel void gdn_digital_permutation(
+EXPORT void gdn_digital_permutation(
     // Permutation of digits for a generalized digital net
-    const ulong r, // replications
-    const ulong n, // points
-    const ulong d, // dimension
-    const ulong batch_size_r, // batch size for replications
-    const ulong batch_size_n, // batch size for points
-    const ulong batch_size_d, // batch size for dimension
-    const ulong r_x, // replications of xdig
-    const ulong r_b, // replications of bases
-    const ulong tmax, // rows of each generating matrix
-    const ulong tmax_new, // rows of each new generating matrix
-    const ulong bmax, // common permutation size, typically the maximum basis
-    __global const ulong *perms, // permutations of size r*d*tmax_new*bmax
-    __global const ulong *xdig, // binary digital net points of size r_x*n*d*tmax
-    __global ulong *xdig_new // float digital net points of size r*n*d*tmax_new
+    const unsigned long long r, // replications
+    const unsigned long long n, // points
+    const unsigned long long d, // dimension
+    const unsigned long long batch_size_r, // batch size for replications
+    const unsigned long long batch_size_n, // batch size for points
+    const unsigned long long batch_size_d, // batch size for dimension
+    const unsigned long long r_x, // replications of xdig
+    const unsigned long long r_b, // replications of bases
+    const unsigned long long tmax, // rows of each generating matrix
+    const unsigned long long tmax_new, // rows of each new generating matrix
+    const unsigned long long bmax, // common permutation size, typically the maximum basis
+    const unsigned long long *perms, // permutations of size r*d*tmax_new*bmax
+    const unsigned long long *xdig, // binary digital net points of size r_x*n*d*tmax
+    unsigned long long *xdig_new // float digital net points of size r*n*d*tmax_new
 ){
-    ulong l0 = get_global_id(0)*batch_size_r;
-    ulong i0 = get_global_id(1)*batch_size_n;
-    ulong j0 = get_global_id(2)*batch_size_d;
-    ulong ll,l,ii,i,jj,j,t,idx_xdig,idx_xdig_new,idx_perm,p;
+    unsigned long long l0 = 0*batch_size_r;
+    unsigned long long i0 = 0*batch_size_n;
+    unsigned long long j0 = 0*batch_size_d;
+    unsigned long long ll,l,ii,i,jj,j,t,idx_xdig,idx_xdig_new,idx_perm,p;
     for(ll=0; ll<batch_size_r; ll++){
         l = l0+ll;
         for(ii=0; ii<batch_size_n; ii++){
@@ -853,24 +820,24 @@ __kernel void gdn_digital_permutation(
     }
 }
 
-__kernel void gdn_integer_to_float(
+EXPORT void gdn_integer_to_float(
     // Convert digits of generalized digital net to floats
-    const ulong r, // replications
-    const ulong n, // points
-    const ulong d, // dimension
-    const ulong batch_size_r, // batch size for replications
-    const ulong batch_size_n, // batch size for points
-    const ulong batch_size_d, // batch size for dimension
-    const ulong r_b, // replications of bases 
-    const ulong tmax, // rows of each generating matrix
-    __global const ulong *bases, // bases for each dimension of size r_b*d
-    __global const ulong *xdig, // binary digital net points of size r*n*d*tmax
-    __global double *x // float digital net points of size r*n*d
+    const unsigned long long r, // replications
+    const unsigned long long n, // points
+    const unsigned long long d, // dimension
+    const unsigned long long batch_size_r, // batch size for replications
+    const unsigned long long batch_size_n, // batch size for points
+    const unsigned long long batch_size_d, // batch size for dimension
+    const unsigned long long r_b, // replications of bases 
+    const unsigned long long tmax, // rows of each generating matrix
+    const unsigned long long *bases, // bases for each dimension of size r_b*d
+    const unsigned long long *xdig, // binary digital net points of size r*n*d*tmax
+    double *x // float digital net points of size r*n*d
 ){
-    ulong l0 = get_global_id(0)*batch_size_r;
-    ulong i0 = get_global_id(1)*batch_size_n;
-    ulong j0 = get_global_id(2)*batch_size_d;
-    ulong ll,l,ii,i,jj,j,t,idx_xdig;
+    unsigned long long l0 = 0*batch_size_r;
+    unsigned long long i0 = 0*batch_size_n;
+    unsigned long long j0 = 0*batch_size_d;
+    unsigned long long ll,l,ii,i,jj,j,t,idx_xdig;
     double recip,v,xdig_double,b;
     for(ll=0; ll<batch_size_r; ll++){
         l = l0+ll;
@@ -902,25 +869,25 @@ __kernel void gdn_integer_to_float(
     }
 }
 
-__kernel void gdn_interlace(
+EXPORT void gdn_interlace(
     // Interlace generating matrices or transpose of point sets to attain higher order digital nets
-    const ulong r, // replications
-    const ulong d_alpha, // dimension of resulting generating matrices 
-    const ulong mmax, // columns of generating matrices
-    const ulong batch_size_r, // batch size for replications
-    const ulong batch_size_d_alpha, // batch size for dimension of resulting generating matrices
-    const ulong batch_size_mmax, // batch size for replications
-    const ulong d, // dimension of original generating matrices
-    const ulong tmax, // rows of original generating matrices
-    const ulong tmax_alpha, // rows of interlaced generating matrices
-    const ulong alpha, // interlacing factor
-    __global const ulong *C, // original generating matrices of size r*d*mmax*tmax
-    __global ulong *C_alpha // resulting interlaced generating matrices of size r*d_alpha*mmax*tmax_alpha
+    const unsigned long long r, // replications
+    const unsigned long long d_alpha, // dimension of resulting generating matrices 
+    const unsigned long long mmax, // columns of generating matrices
+    const unsigned long long batch_size_r, // batch size for replications
+    const unsigned long long batch_size_d_alpha, // batch size for dimension of resulting generating matrices
+    const unsigned long long batch_size_mmax, // batch size for replications
+    const unsigned long long d, // dimension of original generating matrices
+    const unsigned long long tmax, // rows of original generating matrices
+    const unsigned long long tmax_alpha, // rows of interlaced generating matrices
+    const unsigned long long alpha, // interlacing factor
+    const unsigned long long *C, // original generating matrices of size r*d*mmax*tmax
+    unsigned long long *C_alpha // resulting interlaced generating matrices of size r*d_alpha*mmax*tmax_alpha
 ){
-    ulong l0 = get_global_id(0)*batch_size_r;
-    ulong j0_alpha = get_global_id(1)*batch_size_d_alpha;
-    ulong k0 = get_global_id(2)*batch_size_mmax;
-    ulong ll,l,jj_alpha,j_alpha,kk,k,t_alpha,t,jj,j;
+    unsigned long long l0 = 0*batch_size_r;
+    unsigned long long j0_alpha = 0*batch_size_d_alpha;
+    unsigned long long k0 = 0*batch_size_mmax;
+    unsigned long long ll,l,jj_alpha,j_alpha,kk,k,t_alpha,t,jj,j;
     for(ll=0; ll<batch_size_r; ll++){
         l = l0+ll;
         for(jj_alpha=0; jj_alpha<batch_size_d_alpha; jj_alpha++){
@@ -947,25 +914,25 @@ __kernel void gdn_interlace(
     }
 }
 
-__kernel void gdn_undo_interlace(
+EXPORT void gdn_undo_interlace(
     // Undo interlacing of generating matrices 
-    const ulong r, // replications
-    const ulong d, // dimension of resulting generating matrices 
-    const ulong mmax, // columns in generating matrices
-    const ulong batch_size_r, // batch size of replications
-    const ulong batch_size_d, // batch size of dimension of resulting generating matrices
-    const ulong batch_size_mmax, // batch size of columns in generating matrices
-    const ulong d_alpha, // dimension of interlaced generating matrices
-    const ulong tmax, // rows of original generating matrices
-    const ulong tmax_alpha, // rows of interlaced generating matrices
-    const ulong alpha, // interlacing factor
-    __global const ulong *C_alpha, // interlaced generating matrices of size r*d_alpha*mmax*tmax_alpha
-    __global ulong *C // original generating matrices of size r*d*mmax*tmax
+    const unsigned long long r, // replications
+    const unsigned long long d, // dimension of resulting generating matrices 
+    const unsigned long long mmax, // columns in generating matrices
+    const unsigned long long batch_size_r, // batch size of replications
+    const unsigned long long batch_size_d, // batch size of dimension of resulting generating matrices
+    const unsigned long long batch_size_mmax, // batch size of columns in generating matrices
+    const unsigned long long d_alpha, // dimension of interlaced generating matrices
+    const unsigned long long tmax, // rows of original generating matrices
+    const unsigned long long tmax_alpha, // rows of interlaced generating matrices
+    const unsigned long long alpha, // interlacing factor
+    const unsigned long long *C_alpha, // interlaced generating matrices of size r*d_alpha*mmax*tmax_alpha
+    unsigned long long *C // original generating matrices of size r*d*mmax*tmax
 ){
-    ulong l0 = get_global_id(0)*batch_size_r;
-    ulong j0 = get_global_id(1)*batch_size_d;
-    ulong k0 = get_global_id(2)*batch_size_mmax;
-    ulong ll,l,j_alpha,kk,k,t_alpha,tt_alpha,t,jj,j;
+    unsigned long long l0 = 0*batch_size_r;
+    unsigned long long j0 = 0*batch_size_d;
+    unsigned long long k0 = 0*batch_size_mmax;
+    unsigned long long ll,l,j_alpha,kk,k,t_alpha,tt_alpha,t,jj,j;
     for(ll=0; ll<batch_size_r; ll++){
         l = l0+ll;
         for(jj=0; jj<batch_size_d; jj++){
@@ -992,25 +959,25 @@ __kernel void gdn_undo_interlace(
     }
 }
 
-__kernel void fwht_1d_radix2(
+EXPORT void fwht_1d_radix2(
     // Fast Walsh-Hadamard Transform for real valued inputs.
     // FWHT is done in place along the last dimension where the size is required to be a power of 2. 
     // Follows the divide-and-conquer algorithm described in https://en.wikipedia.org/wiki/Fast_Walsh%E2%80%93Hadamard_transform
-    const ulong d1, // first dimension
-    const ulong d2, // second dimension
-    const ulong n_half, // half of the last dimension along which FWHT is performed
-    const ulong batch_size_d1, // batch size first dimension 
-    const ulong batch_size_d2, // batch size second dimension
-    const ulong batch_size_n_half, // batch size for half of the last dimension
-    __global double *x // array of size d1*d2*2n_half on which to perform FWHT in place
+    const unsigned long long d1, // first dimension
+    const unsigned long long d2, // second dimension
+    const unsigned long long n_half, // half of the last dimension along which FWHT is performed
+    const unsigned long long batch_size_d1, // batch size first dimension 
+    const unsigned long long batch_size_d2, // batch size second dimension
+    const unsigned long long batch_size_n_half, // batch size for half of the last dimension
+    double *x // array of size d1*d2*2n_half on which to perform FWHT in place
 ){
-    ulong j10 = get_global_id(0)*batch_size_d1;
-    ulong j20 = get_global_id(1)*batch_size_d2;
-    ulong i0 = get_global_id(2)*batch_size_n_half;
-    ulong ii,i,i1,i2,jj1,jj2,j1,j2,k,s,f,idx;
+    unsigned long long j10 = 0*batch_size_d1;
+    unsigned long long j20 = 0*batch_size_d2;
+    unsigned long long i0 = 0*batch_size_n_half;
+    unsigned long long ii,i,i1,i2,jj1,jj2,j1,j2,k,s,f,idx;
     double x1,x2;
-    ulong n = 2*n_half;
-    ulong m = (ulong)(log2((double)n));
+    unsigned long long n = 2*n_half;
+    unsigned long long m = (unsigned long long)(log2((double)n));
     for(k=0; k<m; k++){
         s = m-k-1;
         f = 1<<s; 
@@ -1045,37 +1012,37 @@ __kernel void fwht_1d_radix2(
                 break;
             }
         }
-        barrier(CLK_LOCAL_MEM_FENCE);
+        
     }
 }
 
-__kernel void rfft_1d_radix2(
+EXPORT void rfft_1d_radix2(
     // Fast Fourier Transform for real valued inputs.
     // FFT is done in place along the last dimension where the size is required to be a power of 2. 
     // Follows a decimation-in-time procedure described in https://www.cmlab.csie.ntu.edu.tw/cml/dsp/training/coding/transform/fft.html. 
-    // Since we are performing a real FFT, the last n/2-1 componenets are conjugates of componenets n/2-1,...,1 when indexing from 0. 
+    // Since we are performing a real fft, the last n/2-1 componenets are conjugates of componenets n/2-1,...,1 when indexing from 0. 
     // A future implementation may exploit this symmetry.
-    const ulong d1, // first dimension
-    const ulong d2, // second dimension
-    const ulong n_half, // half of the last dimension of size n = 2n_half along which FFT is performed
-    const ulong batch_size_d1, // batch size first dimension 
-    const ulong batch_size_d2, // batch size second dimension
-    const ulong batch_size_n_half, // batch size for half of the last dimension
-    __global double *twiddler, // size n vector used to store real twiddle factors
-    __global double *twiddlei, // size n vector used to store imaginary twiddle factors 
-    __global double *xr, // real array of size d1*d2*n on which to perform FFT in place
-    __global double *xi // imaginary array of size d1*d2*n on which to perform FFT in place
+    const unsigned long long d1, // first dimension
+    const unsigned long long d2, // second dimension
+    const unsigned long long n_half, // half of the last dimension of size n = 2n_half along which FFT is performed
+    const unsigned long long batch_size_d1, // batch size first dimension 
+    const unsigned long long batch_size_d2, // batch size second dimension
+    const unsigned long long batch_size_n_half, // batch size for half of the last dimension
+    double *twiddler, // size n vector used to store real twiddle factors
+    double *twiddlei, // size n vector used to store imaginary twiddle factors 
+    double *xr, // real array of size d1*d2*n on which to perform FFT in place
+    double *xi // imaginary array of size d1*d2*n on which to perform FFT in place
 ){
-    ulong j10 = get_global_id(0)*batch_size_d1;
-    ulong j20 = get_global_id(1)*batch_size_d2;
-    ulong i0 = get_global_id(2)*batch_size_n_half;
-    ulong b1,b2,ii,i,i1,i2,i1cp,i2cp,t,jj1,jj2,j1,j2,k,s,f,idx;
+    unsigned long long j10 = 0*batch_size_d1;
+    unsigned long long j20 = 0*batch_size_d2;
+    unsigned long long i0 = 0*batch_size_n_half;
+    unsigned long long b1,b2,ii,i,i1,i2,i1cp,i2cp,t,jj1,jj2,j1,j2,k,s,f,idx;
     double xr1,xr2,xi1,xi2,yr,yi,v1,v2,cosv,sinv;
     double PI = acos(-1.);
-    ulong n = 2*n_half;
-    ulong m = (ulong)(log2((double)n));
+    unsigned long long n = 2*n_half;
+    unsigned long long m = (unsigned long long)(log2((double)n));
     // first step where indices are bit reversed and combined without weights, result stored in xi 
-    ulong bigone = 1;
+    unsigned long long bigone = 1;
     for(ii=0; ii<batch_size_n_half; ii++){
         i1 = 2*(i0+ii);
         i1cp = i1;
@@ -1120,7 +1087,7 @@ __kernel void rfft_1d_radix2(
             break;
         }
     }
-    barrier(CLK_LOCAL_MEM_FENCE);
+    
     // copy xi into xr, set all of xi equal to 0, and initialize twiddle factors
     for(ii=0; ii<batch_size_n_half; ii++){
         i1 = 2*(i0+ii);
@@ -1152,7 +1119,7 @@ __kernel void rfft_1d_radix2(
             break;
         }
     }
-    barrier(CLK_LOCAL_MEM_FENCE);
+    
     // remaining butterflies
     for(k=1; k<m; k++){
         s = m-k-1;
@@ -1198,6 +1165,6 @@ __kernel void rfft_1d_radix2(
                 break;
             }
         }
-        barrier(CLK_LOCAL_MEM_FENCE);
+        
     }
 }

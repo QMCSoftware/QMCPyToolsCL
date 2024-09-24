@@ -12,7 +12,7 @@ shortspeedtests:
 	rm -r -f nd_lattice.debug
 
 speedtestgs_lattice:
-	python gs_run.py --qrproblem lattice --tag full --np2 14 --dp2 9 --gsnp2 13 --gsdp2 9 --skip 1 --runs 1 --platform 1 --device 2 --force True
+	python gs_run.py --qrproblem lattice --tag full --np2 10 --dp2 9 --gsnp2 0 --gsdp2 0 --skip 1 --runs 3 --platform 1 --device 2 --force True
 	python gs_parse.py --qrproblem lattice --tag full --cmap cool --colorleq1 k --colorgt1 k --colorperf k
 
 speedtestgs_dnb2:

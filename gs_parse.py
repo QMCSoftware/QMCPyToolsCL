@@ -25,6 +25,7 @@ rows,cols = perf_cl_plt.shape
 fig,ax = pyplot.subplots(nrows=1,ncols=2,figsize=(2*cols,rows+1),sharey=True)
 norm_perf = colors.LogNorm(vmin=np.nanmin(perf_cl_plt),vmax=np.nanmax(perf_cl_plt))
 norm_speedup = colors.Normalize(vmin=0,vmax=np.nanmax(speedup_plt))
+print(speedup_plt)
 ax[0].imshow(perf_cl_plt,cmap=args.cmap,norm=norm_perf)
 ax[1].imshow(speedup_plt,cmap=args.cmap,norm=norm_speedup)
 ax[0].set_ylabel(r"global size $n$")
